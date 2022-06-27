@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
 import { useAccount } from "wagmi";
 
-import contractAbi from "../../artifacts/contracts/Domains.sol/Domains.json";
+import contractAbi from "../utils/ABI.json";
 
 interface FormData {
   domain: string;
