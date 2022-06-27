@@ -1,8 +1,10 @@
-import { Button, Container, Input, Text } from "@nextui-org/react";
+import { Button, Container, Input, Link, Text } from "@nextui-org/react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { ethers } from "ethers";
 import type { NextPage } from "next";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
+import toast from "react-hot-toast";
 import { useAccount } from "wagmi";
 
 import contractAbi from "../../artifacts/contracts/Domains.sol/Domains.json";
@@ -20,7 +22,9 @@ const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "";
 
 const Home: NextPage = () => {
   const account = useAccount();
-  console.log(account);
+  const [domainAddress, setDomainAddress] = useState<string | undefined>(
+    undefined
+  );
 
   const { register, handleSubmit } = useForm<FormData>();
 
@@ -65,6 +69,7 @@ const Home: NextPage = () => {
         );
 
         console.log("Going to pop wallet now to pay gas...");
+        toast("Going to pop wallet now to pay gas and fees for the mint...");
         let tx = await contract.register(domain, {
           value: ethers.utils.parseEther(price),
         });
@@ -77,6 +82,10 @@ const Home: NextPage = () => {
             "Domain minted! https://mumbai.polygonscan.com/tx/" + tx.hash
           );
 
+          setDomainAddress(tx.hash);
+          toast.success("Domain minted!");
+
+          toast("Now you gotta pay gas to set the record data...");
           // Set the record for the domain
           tx = await contract.setRecord(domain, recordData);
           await tx.wait();
@@ -84,8 +93,9 @@ const Home: NextPage = () => {
           console.log(
             "Record set! https://mumbai.polygonscan.com/tx/" + tx.hash
           );
+          toast.success("Record set!");
         } else {
-          alert("Transaction failed! Please try again");
+          toast.error("Transaction failed! Please try again");
         }
       }
     } catch (error) {
@@ -109,6 +119,7 @@ const Home: NextPage = () => {
             <Input
               type="text"
               placeholder="Domain name"
+              aria-label="Domain name"
               {...register("domain")}
             />
             <Text
@@ -141,36 +152,66 @@ const Home: NextPage = () => {
               type="text"
               placeholder="Username"
               css={{ marginTop: "1rem", marginBottom: "1rem" }}
+              aria-label="Username"
               {...register("username")}
             />
             <Input
               type="email"
               placeholder="Email"
               css={{ marginTop: "1rem", marginBottom: "1rem" }}
+              aria-label="Email"
               {...register("email")}
             />
             <Input
               type="text"
               placeholder="Website"
               css={{ marginTop: "1rem", marginBottom: "1rem" }}
+              aria-label="Website"
               {...register("website")}
             />
             <Input
               type="text"
               placeholder="Twitter Username"
               css={{ marginTop: "1rem", marginBottom: "1rem" }}
+              aria-label="Twitter Username"
               {...register("twitter")}
             />
             <Input
               type="text"
               placeholder="GitHub Username"
               css={{ marginTop: "1rem", marginBottom: "1rem" }}
+              aria-label="GitHub Username"
               {...register("github")}
             />
 
             <Button css={{ marginTop: "2rem" }} type="submit">
               Mint Domain
             </Button>
+
+            {domainAddress && (
+              <>
+                <Text
+                  css={{
+                    marginTop: "1rem",
+                    marginBottom: "1rem",
+                  }}
+                >
+                  Domain minted!
+                </Text>
+                <Text
+                  css={{
+                    marginTop: "1rem",
+                    marginBottom: "1rem",
+                  }}
+                >
+                  <Link
+                    href={"https://mumbai.polygonscan.com/tx/" + domainAddress}
+                  >
+                    {domainAddress} on polygonscan
+                  </Link>
+                </Text>
+              </>
+            )}
           </Container>
         </form>
       )}
