@@ -28,8 +28,18 @@ const Home: NextPage = () => {
 
   const { register, handleSubmit } = useForm<FormData>();
 
-  const onSubmit = handleSubmit(async values => {
+  const onMint = handleSubmit(async values => {
     await mintDomain(values.domain, {
+      username: values.username || "",
+      email: values.email || "",
+      website: values.website || "",
+      twitter: values.twitter || "",
+      github: values.github || "",
+    });
+  });
+
+  const onUpdate = handleSubmit(async values => {
+    await updateDomain(values.domain, {
       username: values.username || "",
       email: values.email || "",
       website: values.website || "",
@@ -100,6 +110,36 @@ const Home: NextPage = () => {
       }
     } catch (error) {
       console.log(error);
+      toast.error("Transaction failed! Please try again");
+    }
+  };
+
+  const updateDomain = async (
+    domain: string,
+    recordData: Omit<FormData, "domain">
+  ) => {
+    console.log("Updating domain", domain, "with record", recordData);
+    toast("Updating domain...Will pull up metamask for gas again");
+    try {
+      const { ethereum } = window;
+      if (ethereum) {
+        // @ts-ignore
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        const signer = provider.getSigner();
+        const contract = new ethers.Contract(
+          CONTRACT_ADDRESS,
+          contractAbi.abi,
+          signer
+        );
+
+        let tx = await contract.setRecord(domain, recordData);
+        await tx.wait();
+        console.log("Record set https://mumbai.polygonscan.com/tx/" + tx.hash);
+        toast.success("Record updated!");
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error("Transaction failed! Please try again");
     }
   };
 
@@ -108,7 +148,7 @@ const Home: NextPage = () => {
       <Text h1>Welcome to PNS (Pog Naming Service)</Text>
       <ConnectButton />
       {account && (
-        <form onSubmit={onSubmit}>
+        <form>
           <Container
             css={{
               display: "flex",
@@ -184,8 +224,16 @@ const Home: NextPage = () => {
               {...register("github")}
             />
 
-            <Button css={{ marginTop: "2rem" }} type="submit">
+            <Button css={{ marginTop: "2rem" }} type="submit" onClick={onMint}>
               Mint Domain
+            </Button>
+
+            <Button
+              css={{ marginTop: "2rem" }}
+              type="submit"
+              onClick={onUpdate}
+            >
+              Update Domain
             </Button>
 
             {domainAddress && (
