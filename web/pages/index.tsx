@@ -2,7 +2,7 @@ import { Button, Container, Input, Link, Text } from "@nextui-org/react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { ethers } from "ethers";
 import type { NextPage } from "next";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
 import { useAccount } from "wagmi";
@@ -25,6 +25,7 @@ const Home: NextPage = () => {
   const [domainAddress, setDomainAddress] = useState<string | undefined>(
     undefined
   );
+  const [mints, setMints] = useState<any>([]);
 
   const { register, handleSubmit } = useForm<FormData>();
 
@@ -104,6 +105,10 @@ const Home: NextPage = () => {
             "Record set! https://mumbai.polygonscan.com/tx/" + tx.hash
           );
           toast.success("Record set!");
+
+          setTimeout(() => {
+            fetchMints();
+          }, 2000);
         } else {
           toast.error("Transaction failed! Please try again");
         }
@@ -142,6 +147,48 @@ const Home: NextPage = () => {
       toast.error("Transaction failed! Please try again");
     }
   };
+
+  const fetchMints = async () => {
+    try {
+      const { ethereum } = window;
+      if (ethereum) {
+        // @ts-ignore
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        const signer = provider.getSigner();
+        const contract = new ethers.Contract(
+          CONTRACT_ADDRESS,
+          contractAbi.abi,
+          signer
+        );
+
+        // Get all the domain names from our contract
+        const names = await contract.getAllNames();
+
+        // For each name, get the record and the address
+        const mintRecords = await Promise.all(
+          names.map(async (name: any) => {
+            const mintRecord = await contract.records(name);
+            const owner = await contract.domains(name);
+            return {
+              id: names.indexOf(name),
+              name: name,
+              record: mintRecord,
+              owner: owner,
+            };
+          })
+        );
+
+        console.log("MINTS FETCHED ", mintRecords);
+        setMints(mintRecords);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  useEffect(() => {
+    fetchMints();
+  }, []);
 
   return (
     <Container>
@@ -262,6 +309,41 @@ const Home: NextPage = () => {
             )}
           </Container>
         </form>
+      )}
+      {account && mints.length > 0 && (
+        <Container
+          css={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "start",
+            marginTop: "2rem",
+          }}
+        >
+          <Text>Minted Domains</Text>
+          <Container
+            css={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "start",
+              marginTop: "2rem",
+            }}
+          >
+            {mints.map((mint: any, index: number) => (
+              <Container
+                key={index}
+                css={{
+                  display: "flex",
+                  flexDirection: "row",
+                  alignItems: "start",
+                  marginTop: "1rem",
+                  marginBottom: "1rem",
+                }}
+              >
+                <Text>{mint.name}.pog</Text>
+              </Container>
+            ))}
+          </Container>
+        </Container>
       )}
     </Container>
   );
